@@ -1,19 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Camera, ChevronLeft, ChevronRight, Clock3, Home, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Camera, Clock3, Home, MapPin, Sparkles } from "lucide-react";
 
 type Rate = {
   promedio: number;
   fechaActualizacion: string;
 };
 
-const services = [
-  { name: "Manicura tradicional", euro: 5, detail: "Cuidado, forma y acabado clásico para tus uñas." },
-  { name: "Esmaltado semipermanente", euro: 10, detail: "Color brillante y duradero con terminación profesional." },
-  { name: "Uñas acrílicas", euro: 16, detail: "Extensión y estructura personalizada según tu estilo." },
-  { name: "Jelly Tips", euro: 13, detail: "Extensiones ligeras, cómodas y de acabado natural." },
-  { name: "Diseños · Nail Art", euro: 18, detail: "Diseños creativos y detalles hechos para ti." },
-  { name: "Retiro", euro: 5, detail: "Retiro cuidadoso del producto para proteger la uña natural." },
-  { name: "Mantenimiento de acrílicas", euro: 10, detail: "Relleno, forma y renovación del acabado." },
+type Service = {
+  name: string;
+  price: number;
+  currency: "EUR" | "USD";
+  detail: string;
+};
+
+const services: Service[] = [
+  { name: "Manicura tradicional", price: 5, currency: "EUR", detail: "Cuidado, forma y acabado clásico para tus uñas." },
+  { name: "Esmaltado semipermanente", price: 10, currency: "EUR", detail: "Color brillante y duradero con terminación profesional." },
+  { name: "Uñas acrílicas", price: 16, currency: "EUR", detail: "Extensión y estructura personalizada según tu estilo." },
+  { name: "Jelly Tips", price: 13, currency: "EUR", detail: "Extensiones ligeras, cómodas y de acabado natural." },
+  { name: "Diseños · Nail Art", price: 18, currency: "EUR", detail: "Diseños creativos y detalles hechos para ti." },
+  { name: "Retiro", price: 5, currency: "EUR", detail: "Retiro cuidadoso del producto para proteger la uña natural." },
+  { name: "Mantenimiento de acrílicas", price: 10, currency: "EUR", detail: "Relleno, forma y renovación del acabado." },
+  { name: "Depilación de cejas con cera", price: 7, currency: "USD", detail: "Definición y limpieza de cejas con acabado cuidado." },
+  { name: "Pestañas por punto", price: 8, currency: "USD", detail: "Aplicación de pestañas por punto para realzar tu mirada." },
 ];
 
 const gallery = [
@@ -25,6 +34,7 @@ const gallery = [
   ["/gallery/nails-06.webp", "Diseño corto con detalles rojos"],
   ["/gallery/nails-07.webp", "Nail art en tonos suaves"],
   ["/gallery/nails-08.webp", "Esmaltado blanco y rosa"],
+  ["/gallery/cejas.jpeg", "Diseño y depilación de cejas con cera"],
 ];
 
 const phone = "584241157213";
@@ -35,34 +45,6 @@ function whatsappFor(service?: string) {
     ? `Hola, quiero reservar una cita en Adri Nails para ${service}.`
     : "Hola, quiero reservar una cita en Adri Nails. ¿Qué disponibilidad tienen?";
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-}
-
-function whatsappForDate(date: Date) {
-  const formattedDate = new Intl.DateTimeFormat("es-VE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Caracas",
-  }).format(date);
-  const weekdayHours = date.getDay() === 0 || date.getDay() === 6 ? "9:00 a. m. a 5:00 p. m." : "8:00 a. m. a 10:00 a. m.";
-  const text = `Hola, quiero consultar disponibilidad para el ${formattedDate}. Mi horario habitual sería de ${weekdayHours}.`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-}
-
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
-function getCalendarDays(month: Date) {
-  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
-  const mondayIndex = (firstDay.getDay() + 6) % 7;
-  const start = new Date(month.getFullYear(), month.getMonth(), 1 - mondayIndex);
-  return Array.from({ length: 42 }, (_, index) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + index));
-}
-
-function hoursForDate(date: Date) {
-  return date.getDay() === 0 || date.getDay() === 6 ? "9:00 a. m. – 5:00 p. m." : "8:00 a. m. – 10:00 a. m.";
 }
 
 function formatBs(value: number) {
@@ -93,11 +75,6 @@ export default function App() {
     }
   });
   const [rateError, setRateError] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,10 +100,6 @@ export default function App() {
     return `1 € = ${formatBs(rate.promedio)} · Actualizada ${formatRateDate(rate.fechaActualizacion)}`;
   }, [rate]);
 
-  const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
-  const calendarMonthLabel = new Intl.DateTimeFormat("es-VE", { month: "long", year: "numeric" }).format(calendarMonth);
-  const todayKey = dateKey(new Date());
-
   return (
     <main>
       <header className="site-header">
@@ -136,7 +109,6 @@ export default function App() {
         </a>
         <nav aria-label="Navegación principal">
           <a href="#servicios">Servicios</a>
-          <a href="#disponibilidad">Disponibilidad</a>
           <a href="#galeria">Trabajos</a>
           <a className="header-cta" href={whatsappFor()} target="_blank" rel="noreferrer">Reservar</a>
         </nav>
@@ -160,7 +132,7 @@ export default function App() {
         <div className="hero-gallery" aria-label="Trabajos destacados">
           <img className="hero-photo hero-photo-main" src="/gallery/nails-03.webp" alt="Diseño de uñas realizado por Adri Nails" />
           <img className="hero-photo hero-photo-small" src="/gallery/nails-02.webp" alt="Nail art con detalles dorados" />
-          <div className="hero-badge"><strong>7</strong><span>servicios<br />disponibles</span></div>
+          <div className="hero-badge"><strong>9</strong><span>servicios<br />disponibles</span></div>
         </div>
       </section>
 
@@ -173,7 +145,7 @@ export default function App() {
       <section className="services-section" id="servicios">
         <div className="section-heading">
           <div><p className="eyebrow"><Sparkles /> Servicios y precios</p><h2>Elige tu próximo estilo</h2></div>
-          <p>Los precios en bolívares se calculan con la tasa oficial del euro y pueden variar al actualizarse la cotización.</p>
+          <p>Los servicios en euros se muestran también en bolívares con la tasa oficial. Los servicios en dólares conservan su precio publicado.</p>
         </div>
         <div className="services-grid">
           {services.map((service, index) => (
@@ -182,8 +154,8 @@ export default function App() {
               <h3>{service.name}</h3>
               <p>{service.detail}</p>
               <div className="price-row">
-                <strong>{service.euro} €</strong>
-                <span>{rate ? formatBs(service.euro * rate.promedio) : "Bs. consultando…"}</span>
+                <strong>{service.currency === "USD" ? `$${service.price}` : `${service.price} €`}</strong>
+                <span>{service.currency === "USD" ? "Precio en dólares" : rate ? formatBs(service.price * rate.promedio) : "Bs. consultando…"}</span>
               </div>
               <a href={whatsappFor(service.name)} target="_blank" rel="noreferrer">Reservar este servicio <ArrowRight /></a>
             </article>
@@ -196,57 +168,6 @@ export default function App() {
           </article>
         </div>
         <p className="rate-note">Los montos en bolívares son referenciales. Confirma el precio final al reservar.</p>
-      </section>
-
-      <section className="availability-section" id="disponibilidad">
-        <div className="section-heading">
-          <div><p className="eyebrow"><CalendarDays /> Disponibilidad</p><h2>Elige tu fecha</h2></div>
-          <p>Consulta una fecha en el calendario y escríbenos por WhatsApp. La cita queda confirmada cuando Adri Nails responde.</p>
-        </div>
-        <div className="availability-layout">
-          <div className="calendar-card">
-            <div className="calendar-toolbar">
-              <button type="button" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} aria-label="Mes anterior"><ChevronLeft /></button>
-              <h3>{calendarMonthLabel.charAt(0).toUpperCase() + calendarMonthLabel.slice(1)}</h3>
-              <button type="button" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} aria-label="Mes siguiente"><ChevronRight /></button>
-            </div>
-            <div className="calendar-weekdays" aria-hidden="true">
-              {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <span key={day}>{day}</span>)}
-            </div>
-            <div className="calendar-grid">
-              {calendarDays.map((day) => {
-                const isCurrentMonth = day.getMonth() === calendarMonth.getMonth();
-                const isSelected = selectedDate ? dateKey(selectedDate) === dateKey(day) : false;
-                const isToday = todayKey === dateKey(day);
-                return (
-                  <button
-                    type="button"
-                    key={dateKey(day)}
-                    className={`calendar-day${isCurrentMonth ? "" : " is-muted"}${isSelected ? " is-selected" : ""}${isToday ? " is-today" : ""}`}
-                    disabled={!isCurrentMonth}
-                    onClick={() => setSelectedDate(day)}
-                    aria-label={`${day.getDate()} de ${new Intl.DateTimeFormat("es-VE", { month: "long" }).format(day)} disponible`}
-                  >
-                    <span>{day.getDate()}</span>
-                    {isCurrentMonth && <small>Libre</small>}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="calendar-legend"><span><i className="legend-dot" /> Disponible habitual</span><span><i className="legend-ring" /> Hoy</span></div>
-          </div>
-          <aside className="availability-detail">
-            <p className="eyebrow"><Clock3 /> Reserva con cita previa</p>
-            <h3>{selectedDate ? new Intl.DateTimeFormat("es-VE", { weekday: "long", day: "numeric", month: "long" }).format(selectedDate) : "Selecciona un día"}</h3>
-            <p>{selectedDate ? `Horario habitual para esta fecha: ${hoursForDate(selectedDate)}.` : "Cada día del calendario muestra la disponibilidad habitual según el horario de Adri Nails."}</p>
-            <div className="availability-hours">
-              <div><span>Lunes a viernes</span><strong>8:00 a. m. – 10:00 a. m.</strong></div>
-              <div><span>Sábados y domingos</span><strong>9:00 a. m. – 5:00 p. m.</strong></div>
-            </div>
-            {selectedDate ? <a className="button button-primary" href={whatsappForDate(selectedDate)} target="_blank" rel="noreferrer">Consultar esta fecha <ArrowRight /></a> : <a className="button button-secondary" href={whatsappFor()} target="_blank" rel="noreferrer">Consultar disponibilidad <ArrowRight /></a>}
-            <small className="availability-note">La disponibilidad final se confirma por WhatsApp antes de agendar.</small>
-          </aside>
-        </div>
       </section>
 
       <section className="gallery-section" id="galeria">
