@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Camera, Clock3, Home, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Camera, ChevronLeft, ChevronRight, Clock3, Home, MapPin, Sparkles } from "lucide-react";
 
 type Rate = {
   promedio: number;
@@ -37,6 +37,34 @@ function whatsappFor(service?: string) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
+function whatsappForDate(date: Date) {
+  const formattedDate = new Intl.DateTimeFormat("es-VE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Caracas",
+  }).format(date);
+  const weekdayHours = date.getDay() === 0 || date.getDay() === 6 ? "9:00 a. m. a 5:00 p. m." : "8:00 a. m. a 10:00 a. m.";
+  const text = `Hola, quiero consultar disponibilidad para el ${formattedDate}. Mi horario habitual sería de ${weekdayHours}.`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function getCalendarDays(month: Date) {
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+  const mondayIndex = (firstDay.getDay() + 6) % 7;
+  const start = new Date(month.getFullYear(), month.getMonth(), 1 - mondayIndex);
+  return Array.from({ length: 42 }, (_, index) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + index));
+}
+
+function hoursForDate(date: Date) {
+  return date.getDay() === 0 || date.getDay() === 6 ? "9:00 a. m. – 5:00 p. m." : "8:00 a. m. – 10:00 a. m.";
+}
+
 function formatBs(value: number) {
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
@@ -65,6 +93,11 @@ export default function App() {
     }
   });
   const [rateError, setRateError] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,6 +123,10 @@ export default function App() {
     return `1 € = ${formatBs(rate.promedio)} · Actualizada ${formatRateDate(rate.fechaActualizacion)}`;
   }, [rate]);
 
+  const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
+  const calendarMonthLabel = new Intl.DateTimeFormat("es-VE", { month: "long", year: "numeric" }).format(calendarMonth);
+  const todayKey = dateKey(new Date());
+
   return (
     <main>
       <header className="site-header">
@@ -99,6 +136,7 @@ export default function App() {
         </a>
         <nav aria-label="Navegación principal">
           <a href="#servicios">Servicios</a>
+          <a href="#disponibilidad">Disponibilidad</a>
           <a href="#galeria">Trabajos</a>
           <a className="header-cta" href={whatsappFor()} target="_blank" rel="noreferrer">Reservar</a>
         </nav>
@@ -158,6 +196,57 @@ export default function App() {
           </article>
         </div>
         <p className="rate-note">Los montos en bolívares son referenciales. Confirma el precio final al reservar.</p>
+      </section>
+
+      <section className="availability-section" id="disponibilidad">
+        <div className="section-heading">
+          <div><p className="eyebrow"><CalendarDays /> Disponibilidad</p><h2>Elige tu fecha</h2></div>
+          <p>Consulta una fecha en el calendario y escríbenos por WhatsApp. La cita queda confirmada cuando Adri Nails responde.</p>
+        </div>
+        <div className="availability-layout">
+          <div className="calendar-card">
+            <div className="calendar-toolbar">
+              <button type="button" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} aria-label="Mes anterior"><ChevronLeft /></button>
+              <h3>{calendarMonthLabel.charAt(0).toUpperCase() + calendarMonthLabel.slice(1)}</h3>
+              <button type="button" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} aria-label="Mes siguiente"><ChevronRight /></button>
+            </div>
+            <div className="calendar-weekdays" aria-hidden="true">
+              {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <span key={day}>{day}</span>)}
+            </div>
+            <div className="calendar-grid">
+              {calendarDays.map((day) => {
+                const isCurrentMonth = day.getMonth() === calendarMonth.getMonth();
+                const isSelected = selectedDate ? dateKey(selectedDate) === dateKey(day) : false;
+                const isToday = todayKey === dateKey(day);
+                return (
+                  <button
+                    type="button"
+                    key={dateKey(day)}
+                    className={`calendar-day${isCurrentMonth ? "" : " is-muted"}${isSelected ? " is-selected" : ""}${isToday ? " is-today" : ""}`}
+                    disabled={!isCurrentMonth}
+                    onClick={() => setSelectedDate(day)}
+                    aria-label={`${day.getDate()} de ${new Intl.DateTimeFormat("es-VE", { month: "long" }).format(day)} disponible`}
+                  >
+                    <span>{day.getDate()}</span>
+                    {isCurrentMonth && <small>Libre</small>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="calendar-legend"><span><i className="legend-dot" /> Disponible habitual</span><span><i className="legend-ring" /> Hoy</span></div>
+          </div>
+          <aside className="availability-detail">
+            <p className="eyebrow"><Clock3 /> Reserva con cita previa</p>
+            <h3>{selectedDate ? new Intl.DateTimeFormat("es-VE", { weekday: "long", day: "numeric", month: "long" }).format(selectedDate) : "Selecciona un día"}</h3>
+            <p>{selectedDate ? `Horario habitual para esta fecha: ${hoursForDate(selectedDate)}.` : "Cada día del calendario muestra la disponibilidad habitual según el horario de Adri Nails."}</p>
+            <div className="availability-hours">
+              <div><span>Lunes a viernes</span><strong>8:00 a. m. – 10:00 a. m.</strong></div>
+              <div><span>Sábados y domingos</span><strong>9:00 a. m. – 5:00 p. m.</strong></div>
+            </div>
+            {selectedDate ? <a className="button button-primary" href={whatsappForDate(selectedDate)} target="_blank" rel="noreferrer">Consultar esta fecha <ArrowRight /></a> : <a className="button button-secondary" href={whatsappFor()} target="_blank" rel="noreferrer">Consultar disponibilidad <ArrowRight /></a>}
+            <small className="availability-note">La disponibilidad final se confirma por WhatsApp antes de agendar.</small>
+          </aside>
+        </div>
       </section>
 
       <section className="gallery-section" id="galeria">
